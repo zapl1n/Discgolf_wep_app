@@ -1,9 +1,9 @@
 const db = require('../database');
 
 const FoundDiscModel = {
-    addFoundDisc: function (discName, color, locationFound, finderNumber, callback) {
-        db.query('INSERT INTO FoundDisc (discName, color, locationFound, finderNumber) VALUES (?,?,?,?)',
-            [discName, color, locationFound, finderNumber],
+    addFoundDisc: function (discName, color, locationFound, finderNumber, imageFileName, callback) {
+        db.query('INSERT INTO FoundDisc (discName, color, locationFound, finderNumber,imageFileName) VALUES (?,?,?,?,?)',
+            [discName, color, locationFound, finderNumber,imageFileName],
             (err, result) => {
                 if (err) {
                     console.error('Error executing query', err);
