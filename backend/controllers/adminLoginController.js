@@ -1,64 +1,90 @@
 const db = require('../database');
 const bcrypt = require('bcrypt');
 const dotenv = require('dotenv').config();
+const jwt = require('jsonwebtoken');
 
-const adminLogin = {
-    addAdminToDatabase: async () => {
-        try {
-            const adminUsername = process.env.ADMIN_USERNAME;
-            const adminPassword = process.env.ADMIN_PASSWORD;
+const login = (req, res) => {
+    console.log(req.body);
 
+    const salt = bcrypt.genSaltSync(10);
+    const hash = bcrypt.hashSync(req.body.password, salt)
 
-            // Kontrollime, kas administraator on juba olemas
-            const existingAdmin = await  db.query('SELECT username, password FROM admin WHERE username = ? AND password = ?', [adminUsername, adminPassword]);
-
-
-            
-
-            if (existingAdmin.length > 0) {
-                console.log('Admin already exists in the database');
-                return;
-            }
-            
-
-
-            // Kui administraatorit pole, lisame ta andmebaasi
-            const hash = await bcrypt.hash(adminPassword, 10);
-
-            const adminData = {
-                username: adminUsername,
-                password: hash
-            };
-
-            const result = await db.query('INSERT INTO admin SET ?', adminData);
-
-            console.log('Admin successfully added to the database:', result);
-        } catch (error) {
-            console.error('Error adding admin to database:', error);
+    db.query('SELECT * FROM admin WHERE username = ? limit 1', [req.body.username], async (error, result) => {
+        if (error) {
+            console.log("error: ", error);
+            return res.status(500).send({
+                success: false,
+                error: 'Fetching admins failed: ' + error.message,
+            });
         }
-    },
-
-    login: async function (username, password, callback) {
-        try {
-            const result = await db.query('SELECT * FROM admin WHERE username = ?', [username]);
-            
-
-            if (result.length === 0) {
-                return callback(null, false);
-            }
-
-            const res = await bcrypt.compare(password, result[0].password);
-
-            if (res) {
-                return callback(null, true);
-            } else {
-                return callback(null, false);
-            }
-        } catch (error) {
-            console.error('Error logging in:', error);
-            return callback(error, null);
+        if (!result.length) {
+            return res.status(400).send({
+                success: false,
+                error: 'Username doesnt exist',
+            });
         }
-    }
+
+        const [admin] = result;
+
+        const match = await bcrypt.compare(req.body.password, admin.password);
+
+        if (!match) {
+            return res.status(400).send({
+                success: false,
+                error: 'Wrong password',
+            });
+        }
+
+        const token = jwt.sign({ id: admin.admin_id }, 'token', { expiresIn: 60 * 60 });
+        res.status(200).send({
+            success: true,
+            data: token,
+        });
+    });
 };
 
-module.exports = adminLogin;
+const approve = (req, res) => {
+    console.log("approve", req.body, req.user, req.params)
+
+    db.query('UPDATE Posts SET status = "approved", admin_id = ? WHERE post_id = ?', [req.user.id, req.params.id], (err, res) => {
+        console.log("err", err)
+        console.log("res", res)
+    });
+
+    return res.status(200).send({
+        success: true,
+    })
+}
+
+const deny = (req, res) => {
+    console.log("deny", req.body, req.user, req.params)
+
+    db.query('UPDATE Posts SET status = "rejected", admin_id = ? WHERE post_id = ?', [req.user.id, req.params.id], (err, res) => {
+        console.log("err", err)
+        console.log("res", res)
+    });
+
+    return res.status(200).send({
+        success: true,
+    })
+}
+
+const deletePost = (req, res) => {
+    console.log("delete", req.body, req.user, req.params)
+
+    db.query('DELETE FROM Posts WHERE post_id = ?', [req.params.id], (err, res) => {
+        console.log("err", err)
+        console.log("res", res)
+    });
+
+    return res.status(200).send({
+        success: true,
+    })
+}
+
+module.exports = {
+    login,
+    approve,
+    deny,
+    deletePost
+};

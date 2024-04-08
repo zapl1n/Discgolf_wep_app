@@ -1,21 +1,13 @@
 const express = require('express');
-
 const app = express();
 
-
-
-
 app.use(express.json());
-
-
 
 const foundDiscs = require('./routes/foundDiscs');
 
 
-
 app.use('/api/disc', foundDiscs);
-
-app.use('/api/login', require('./routes/adminLogin'));
+app.use('/api/admin', require('./routes/adminLogin'));
 
 
 

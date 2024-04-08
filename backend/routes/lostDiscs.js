@@ -13,7 +13,8 @@ router.post('/', (req,res) =>{
         res.status(201).send('Disc added to database');
     });
 });
-router.get('/', (req, res) => {
+
+router.get('/', auth, (req, res) => {
     LostDiscModel.getAllLostDiscs((err, result) => {
         if (err) {
             console.error('Error executing query', err);
